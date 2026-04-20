@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from typing import List, Optional
+import json
 from calculator import calculate_batch
 
 app = FastAPI()
@@ -16,6 +17,9 @@ class Employee(BaseModel):
 class BatchRequest(BaseModel):
     employees: List[Employee]
 
+class RawBatchRequest(BaseModel):
+    employees_json: str  # JSON string Bubble builds as text
+
 @app.get("/")
 def root():
     return {"status": "Paylo Engine running"}
@@ -23,5 +27,11 @@ def root():
 @app.post("/calculate")
 def calculate(request: BatchRequest):
     employees = [emp.dict() for emp in request.employees]
+    results = calculate_batch(employees)
+    return {"results": results}
+
+@app.post("/calculate/from-bubble")
+def calculate_from_bubble(request: RawBatchRequest):
+    employees = json.loads(request.employees_json)
     results = calculate_batch(employees)
     return {"results": results}
