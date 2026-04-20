@@ -32,6 +32,9 @@ def calculate(request: BatchRequest):
 
 @app.post("/calculate/from-bubble")
 def calculate_from_bubble(request: RawBatchRequest):
-    employees = json.loads(request.employees_json)
+    try:
+        employees = json.loads(request.employees_json)
+    except (json.JSONDecodeError, TypeError):
+        employees = []
     results = calculate_batch(employees)
     return {"results": results}
