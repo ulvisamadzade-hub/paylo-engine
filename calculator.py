@@ -69,6 +69,7 @@ def calculate_payslip(employee):
         "vacation_pay": vacation_pay,
         "ot_earnings": ot_earnings,
         "hr_adjustment": hr_adjustment,
+        "vacation_deduction": vacation_deduction,
         "total_gross": total_gross,
         "income_tax": income_tax,
         "dsmf_employee": dsmf_employee,
