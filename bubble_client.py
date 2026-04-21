@@ -43,18 +43,18 @@ class BubbleClient:
         ])
 
     def get_overtime_entries(self, period_id: str, company_id: str) -> list:
-        return self._get_all("overtimeentry", constraints=[
+        entries = self._get_all("overtimeentry", constraints=[
             {"key": "payroll_period", "constraint_type": "equals", "value": period_id},
-            {"key": "status", "constraint_type": "equals", "value": "Tasdiqlandı"},
             {"key": "company", "constraint_type": "equals", "value": company_id}
         ])
+        return [e for e in entries if e.get("status") == "Təsdiqləndi"]
 
     def get_leave_requests(self, period_id: str, company_id: str) -> list:
-        return self._get_all("leaverequest", constraints=[
+        requests = self._get_all("leaverequest", constraints=[
             {"key": "payroll_period", "constraint_type": "equals", "value": period_id},
-            {"key": "status", "constraint_type": "equals", "value": "Tasdiqlandı"},
             {"key": "company", "constraint_type": "equals", "value": company_id}
         ])
+        return [r for r in requests if r.get("status") == "Təsdiqləndi"]
 
     def get_existing_snapshot_totals(self, snapshot_id: str) -> list:
         return self._get_all("snapshotemployeetotals", constraints=[
