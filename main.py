@@ -18,7 +18,7 @@ class BatchRequest(BaseModel):
     employees: List[Employee]
 
 class RawBatchRequest(BaseModel):
-    employees_json: str  # JSON string Bubble builds as text
+    employees_json: str | List[dict] = []
 
 @app.get("/")
 def root():
@@ -30,11 +30,10 @@ def calculate(request: BatchRequest):
     results = calculate_batch(employees)
     return {"results": results}
 
+class ArrayBatchRequest(BaseModel):
+    employees: List[dict] = []
+
 @app.post("/calculate/from-bubble")
-def calculate_from_bubble(request: RawBatchRequest):
-    try:
-        employees = json.loads(request.employees_json)
-    except (json.JSONDecodeError, TypeError):
-        employees = []
-    results = calculate_batch(employees)
+def calculate_from_bubble(request: ArrayBatchRequest):
+    results = calculate_batch(request.employees)
     return {"results": results}
