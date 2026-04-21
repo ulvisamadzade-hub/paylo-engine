@@ -65,10 +65,10 @@ class BubbleClient:
         r = httpx.post(f"{self.base}/obj/snapshotemployeetotals",
                        headers=self.headers, json=data)
         r.raise_for_status()
-        return r.json()
+        return r.json() if r.text else {}
 
     def update_snapshot_total(self, record_id: str, data: dict) -> dict:
         r = httpx.patch(f"{self.base}/obj/snapshotemployeetotals/{record_id}",
                         headers=self.headers, json=data)
         r.raise_for_status()
-        return r.json()
+        return r.json() if r.text else {}
