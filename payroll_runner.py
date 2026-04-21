@@ -34,9 +34,9 @@ def run_payroll(snapshot_id: str, api_key: str, app_url: str = None) -> dict:
         emp_id = emp["_id"]
         base_salary = emp.get("base_salary_amount", 0) or 0
 
-        # Calculate OT earnings
+        # Calculate OT earnings (2x rate)
         ot_earnings = sum(
-            ot.get("approved_hours", 0) * base_salary / working_hours
+            ot.get("approved_hours", 0) * base_salary / working_hours * 2
             for ot in ot_by_employee.get(emp_id, [])
         )
 

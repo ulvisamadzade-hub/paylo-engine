@@ -51,7 +51,7 @@ class BubbleClient:
 
     def get_leave_requests(self, period_id: str, company_id: str) -> list:
         requests = self._get_all("leaverequest", constraints=[
-            {"key": "payroll_period", "constraint_type": "equals", "value": period_id},
+            {"key": "original_period", "constraint_type": "equals", "value": period_id},
             {"key": "company", "constraint_type": "equals", "value": company_id}
         ])
         return [r for r in requests if r.get("status") == "Təsdiqləndi"]
