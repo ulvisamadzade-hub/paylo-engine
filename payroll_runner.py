@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date as date_type
 from supabase_client import SupabaseClient
 from calculator import calculate_payslip
 
@@ -62,16 +62,26 @@ def run_payroll(period_id: str, company_id: str, employee_ids: list = None) -> d
 
             for lr in leave_by_emp.get(emp_id, []):
                 leave_type = lr.get("leave_type", "")
-                days = float(lr.get("working_days_on_leave") or 0)
-                deduction = round(days * daily_rate, 2)
+                working_days = float(lr.get("working_days_on_leave") or 0)
+                # Deduction = working days lost from salary
+                deduction = round(working_days * daily_rate, 2)
+
+                # Calendar days for vacation pay (AZ Labor Code: pay on calendar days)
+                try:
+                    start = date_type.fromisoformat(lr["start_date"])
+                    end = date_type.fromisoformat(lr["end_date"])
+                    calendar_days = (end - start).days + 1
+                except Exception:
+                    calendar_days = working_days
+                vacation_pay_rate = base_salary / 30  # average calendar days per month
 
                 if leave_type == "ANNUAL":
                     stored = float(lr.get("vacation_amount") or 0)
-                    vacation_pay += stored if stored > 0 else deduction
+                    vacation_pay += stored if stored > 0 else round(calendar_days * vacation_pay_rate, 2)
                     vacation_deduction += deduction
                 elif leave_type == "SICK":
                     stored = float(lr.get("sick_pay_amount") or 0)
-                    sick_pay += stored if stored > 0 else deduction
+                    sick_pay += stored if stored > 0 else round(calendar_days * vacation_pay_rate, 2)
                     vacation_deduction += deduction
                 elif leave_type == "UNPAID":
                     vacation_deduction += deduction

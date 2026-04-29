@@ -61,8 +61,8 @@ class SupabaseClient:
         return (
             self.db.table("leave_requests")
             .select(
-                "employee_id, leave_type, working_days_on_leave, "
-                "vacation_amount, sick_pay_amount"
+                "employee_id, leave_type, start_date, end_date, "
+                "working_days_on_leave, vacation_amount, sick_pay_amount"
             )
             .in_("employee_id", employee_ids)
             .lte("start_date", period_end)
