@@ -1,12 +1,11 @@
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List, Optional
-import json
-import os
 from calculator import calculate_batch
 from payroll_runner import run_payroll
 
 app = FastAPI()
+
 
 class Employee(BaseModel):
     employee_id: str
@@ -16,15 +15,21 @@ class Employee(BaseModel):
     hr_adjustment: float = 0
     vacation_deduction: float = 0
 
+
 class BatchRequest(BaseModel):
     employees: List[Employee]
 
-class RawBatchRequest(BaseModel):
-    employees_json: str | List[dict] = []
 
-@app.get("/")
-def root():
-    return {"status": "Paylo Engine running"}
+class RunPayrollRequest(BaseModel):
+    period_id: str
+    company_id: str
+    employee_ids: Optional[List[str]] = None
+
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
+
 
 @app.post("/calculate")
 def calculate(request: BatchRequest):
@@ -32,23 +37,15 @@ def calculate(request: BatchRequest):
     results = calculate_batch(employees)
     return {"results": results}
 
-class ArrayBatchRequest(BaseModel):
-    employees: List[dict] = []
-
-@app.post("/calculate/from-bubble")
-def calculate_from_bubble(request: ArrayBatchRequest):
-    results = calculate_batch(request.employees)
-    return {"results": results}
-
-class RunPayrollRequest(BaseModel):
-    snapshot_id: str
-    bubble_api_key: str
-    app_url: Optional[str] = None
 
 @app.post("/run-payroll")
 def run_payroll_endpoint(request: RunPayrollRequest):
     try:
-        result = run_payroll(request.snapshot_id, request.bubble_api_key, request.app_url)
+        result = run_payroll(
+            period_id=request.period_id,
+            company_id=request.company_id,
+            employee_ids=request.employee_ids,
+        )
         return result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
