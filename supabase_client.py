@@ -77,12 +77,12 @@ class SupabaseClient:
         """Return a set of ISO date strings that are public holidays in the range."""
         res = (
             self.db.table("public_holidays")
-            .select("date")
-            .gte("date", period_start)
-            .lte("date", period_end)
+            .select("holiday_date")
+            .gte("holiday_date", period_start)
+            .lte("holiday_date", period_end)
             .execute()
         )
-        return {row["date"] for row in (res.data or [])}
+        return {row["holiday_date"] for row in (res.data or [])}
 
     # ── Snapshot management ────────────────────────────────────
 
