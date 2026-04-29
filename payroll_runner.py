@@ -14,6 +14,18 @@ def _working_days_in_range(start_str: str, end_str: str) -> int:
     return sum(1 for i in range((e - s).days + 1) if (s.toordinal() + i) % 7 < 5)
 
 
+def _leave_working_days(start_str: str, end_str: str, holidays: set) -> int:
+    """Count Mon–Fri days in leave period excluding public holidays."""
+    s = date_type.fromisoformat(str(start_str)[:10])
+    e = date_type.fromisoformat(str(end_str)[:10])
+    count = 0
+    for i in range((e - s).days + 1):
+        d = date_type.fromordinal(s.toordinal() + i)
+        if d.weekday() < 5 and d.isoformat() not in holidays:
+            count += 1
+    return count
+
+
 def run_payroll(period_id: str, company_id: str, employee_ids: list = None) -> dict:
     db = SupabaseClient()
 
@@ -70,21 +82,23 @@ def run_payroll(period_id: str, company_id: str, employee_ids: list = None) -> d
 
             for lr in leave_by_emp.get(emp_id, []):
                 leave_type = lr.get("leave_type", "")
-                leave_working_days = float(lr.get("working_days_on_leave") or 0)
-                # Deduction = working days × daily_rate
-                deduction = round(leave_working_days * daily_rate, 2)
+                start_str = str(lr["start_date"])[:10]
+                end_str = str(lr["end_date"])[:10]
 
-                # Vacation days = all calendar days excluding public holidays
                 try:
-                    s = date_type.fromisoformat(str(lr["start_date"])[:10])
-                    e = date_type.fromisoformat(str(lr["end_date"])[:10])
+                    s = date_type.fromisoformat(start_str)
+                    e = date_type.fromisoformat(end_str)
                     total_days = (e - s).days + 1
-                    start_str = s.isoformat()
-                    end_str = e.isoformat()
                     holiday_count = sum(1 for h in holidays if start_str <= h <= end_str)
+                    # Pay: all calendar days excluding holidays (incl. weekends)
                     vacation_days = total_days - holiday_count
+                    # Deduction: Mon–Fri days excluding holidays only
+                    leave_working_days = _leave_working_days(start_str, end_str, holidays)
                 except Exception:
-                    vacation_days = leave_working_days
+                    vacation_days = float(lr.get("working_days_on_leave") or 0)
+                    leave_working_days = vacation_days
+
+                deduction = round(leave_working_days * daily_rate, 2)
 
                 if leave_type == "ANNUAL":
                     stored = float(lr.get("vacation_amount") or 0)
