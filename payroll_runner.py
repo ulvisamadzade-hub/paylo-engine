@@ -28,6 +28,7 @@ def run_payroll(period_id: str, company_id: str, employee_ids: list = None) -> d
 
     ot_entries = db.get_approved_ot(period_start, period_end, emp_ids)
     leave_entries = db.get_approved_leave(period_start, period_end, emp_ids)
+    holidays = db.get_public_holidays(period_start, period_end)
 
     # Index by employee
     ot_by_emp: dict[str, list] = {}
@@ -63,25 +64,29 @@ def run_payroll(period_id: str, company_id: str, employee_ids: list = None) -> d
             for lr in leave_by_emp.get(emp_id, []):
                 leave_type = lr.get("leave_type", "")
                 working_days = float(lr.get("working_days_on_leave") or 0)
-                # Deduction = working days lost from salary
+                # Deduction = working days × daily_rate
                 deduction = round(working_days * daily_rate, 2)
 
-                # Calendar days for vacation pay (AZ Labor Code: pay on calendar days)
+                # Vacation days = all calendar days excluding public holidays
                 try:
-                    start = date_type.fromisoformat(lr["start_date"])
-                    end = date_type.fromisoformat(lr["end_date"])
-                    calendar_days = (end - start).days + 1
+                    s = date_type.fromisoformat(lr["start_date"])
+                    e = date_type.fromisoformat(lr["end_date"])
+                    total_days = (e - s).days + 1
+                    holiday_count = sum(
+                        1 for h in holidays
+                        if s <= date_type.fromisoformat(h) <= e
+                    )
+                    vacation_days = total_days - holiday_count
                 except Exception:
-                    calendar_days = working_days
-                vacation_pay_rate = base_salary / 30  # average calendar days per month
+                    vacation_days = working_days
 
                 if leave_type == "ANNUAL":
                     stored = float(lr.get("vacation_amount") or 0)
-                    vacation_pay += stored if stored > 0 else round(calendar_days * vacation_pay_rate, 2)
+                    vacation_pay += stored if stored > 0 else round(vacation_days * daily_rate, 2)
                     vacation_deduction += deduction
                 elif leave_type == "SICK":
                     stored = float(lr.get("sick_pay_amount") or 0)
-                    sick_pay += stored if stored > 0 else round(calendar_days * vacation_pay_rate, 2)
+                    sick_pay += stored if stored > 0 else round(vacation_days * daily_rate, 2)
                     vacation_deduction += deduction
                 elif leave_type == "UNPAID":
                     vacation_deduction += deduction

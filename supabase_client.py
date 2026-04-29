@@ -73,6 +73,17 @@ class SupabaseClient:
             or []
         )
 
+    def get_public_holidays(self, period_start: str, period_end: str) -> set:
+        """Return a set of ISO date strings that are public holidays in the range."""
+        res = (
+            self.db.table("public_holidays")
+            .select("date")
+            .gte("date", period_start)
+            .lte("date", period_end)
+            .execute()
+        )
+        return {row["date"] for row in (res.data or [])}
+
     # ── Snapshot management ────────────────────────────────────
 
     def get_or_create_snapshot(self, period_id: str, company_id: str) -> str:
