@@ -69,13 +69,12 @@ def run_payroll(period_id: str, company_id: str, employee_ids: list = None) -> d
 
                 # Vacation days = all calendar days excluding public holidays
                 try:
-                    s = date_type.fromisoformat(lr["start_date"])
-                    e = date_type.fromisoformat(lr["end_date"])
+                    s = date_type.fromisoformat(str(lr["start_date"])[:10])
+                    e = date_type.fromisoformat(str(lr["end_date"])[:10])
                     total_days = (e - s).days + 1
-                    holiday_count = sum(
-                        1 for h in holidays
-                        if s <= date_type.fromisoformat(h) <= e
-                    )
+                    start_str = s.isoformat()
+                    end_str = e.isoformat()
+                    holiday_count = sum(1 for h in holidays if start_str <= h <= end_str)
                     vacation_days = total_days - holiday_count
                 except Exception:
                     vacation_days = working_days

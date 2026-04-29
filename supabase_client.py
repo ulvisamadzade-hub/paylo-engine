@@ -82,7 +82,7 @@ class SupabaseClient:
             .lte("holiday_date", period_end)
             .execute()
         )
-        return {row["holiday_date"] for row in (res.data or [])}
+        return {str(row["holiday_date"])[:10] for row in (res.data or [])}
 
     # ── Snapshot management ────────────────────────────────────
 
