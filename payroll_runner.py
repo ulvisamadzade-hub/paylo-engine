@@ -7,6 +7,13 @@ def _is_weekend(date_str: str) -> bool:
     return datetime.fromisoformat(date_str).weekday() >= 5
 
 
+def _working_days_in_range(start_str: str, end_str: str) -> int:
+    """Count Mon–Fri days between two ISO date strings inclusive."""
+    s = date_type.fromisoformat(str(start_str)[:10])
+    e = date_type.fromisoformat(str(end_str)[:10])
+    return sum(1 for i in range((e - s).days + 1) if (s.toordinal() + i) % 7 < 5)
+
+
 def run_payroll(period_id: str, company_id: str, employee_ids: list = None) -> dict:
     db = SupabaseClient()
 
@@ -14,10 +21,10 @@ def run_payroll(period_id: str, company_id: str, employee_ids: list = None) -> d
     if not period:
         raise ValueError(f"Period {period_id} not found")
 
-    working_hours = period.get("working_hours") or 168
-    working_days = working_hours / 8
     period_start = period["period_start"]
     period_end = period["period_end"]
+    working_hours = period.get("working_hours") or 168
+    working_days_in_period = _working_days_in_range(period_start, period_end)
 
     employees = db.get_active_employees(company_id, employee_ids)
     if not employees:
@@ -46,7 +53,7 @@ def run_payroll(period_id: str, company_id: str, employee_ids: list = None) -> d
         emp_id = emp["id"]
         base_salary = float(emp.get("base_salary_amount") or 0)
         hourly_rate = base_salary / working_hours
-        daily_rate = base_salary / working_days
+        daily_rate = base_salary / working_days_in_period
 
         try:
             # OT: 1.5x weekday, 2x weekend
@@ -63,9 +70,9 @@ def run_payroll(period_id: str, company_id: str, employee_ids: list = None) -> d
 
             for lr in leave_by_emp.get(emp_id, []):
                 leave_type = lr.get("leave_type", "")
-                working_days = float(lr.get("working_days_on_leave") or 0)
+                leave_working_days = float(lr.get("working_days_on_leave") or 0)
                 # Deduction = working days × daily_rate
-                deduction = round(working_days * daily_rate, 2)
+                deduction = round(leave_working_days * daily_rate, 2)
 
                 # Vacation days = all calendar days excluding public holidays
                 try:
@@ -77,7 +84,7 @@ def run_payroll(period_id: str, company_id: str, employee_ids: list = None) -> d
                     holiday_count = sum(1 for h in holidays if start_str <= h <= end_str)
                     vacation_days = total_days - holiday_count
                 except Exception:
-                    vacation_days = working_days
+                    vacation_days = leave_working_days
 
                 if leave_type == "ANNUAL":
                     stored = float(lr.get("vacation_amount") or 0)
