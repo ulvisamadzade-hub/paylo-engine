@@ -86,7 +86,7 @@ class SupabaseClient:
         if existing:
             return existing[0]["id"]
 
-        created = (
+        res = (
             self.db.table("payroll_snapshots")
             .insert(
                 {
@@ -95,11 +95,9 @@ class SupabaseClient:
                     "status": "DRAFT",
                 }
             )
-            .select("id")
-            .single()
             .execute()
         )
-        return created.data["id"]
+        return res.data[0]["id"]
 
     # ── Writes ─────────────────────────────────────────────────
 
@@ -107,11 +105,9 @@ class SupabaseClient:
         res = (
             self.db.table("snapshot_employee_totals")
             .upsert(data, on_conflict="payroll_snapshot_id,employee_id")
-            .select("id")
-            .single()
             .execute()
         )
-        return res.data
+        return res.data[0] if res.data else {}
 
     def upsert_payslip(self, data: dict) -> None:
         (
