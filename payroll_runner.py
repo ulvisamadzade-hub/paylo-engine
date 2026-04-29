@@ -27,7 +27,7 @@ def run_payroll(period_id: str, company_id: str, employee_ids: list = None) -> d
     snapshot_id = db.get_or_create_snapshot(period_id, company_id)
 
     ot_entries = db.get_approved_ot(period_start, period_end, emp_ids)
-    leave_entries = db.get_approved_leave(period_id, emp_ids)
+    leave_entries = db.get_approved_leave(period_start, period_end, emp_ids)
 
     # Index by employee
     ot_by_emp: dict[str, list] = {}
@@ -66,10 +66,12 @@ def run_payroll(period_id: str, company_id: str, employee_ids: list = None) -> d
                 deduction = round(days * daily_rate, 2)
 
                 if leave_type == "ANNUAL":
-                    vacation_pay += float(lr.get("vacation_amount") or 0)
+                    stored = float(lr.get("vacation_amount") or 0)
+                    vacation_pay += stored if stored > 0 else deduction
                     vacation_deduction += deduction
                 elif leave_type == "SICK":
-                    sick_pay += float(lr.get("sick_pay_amount") or 0)
+                    stored = float(lr.get("sick_pay_amount") or 0)
+                    sick_pay += stored if stored > 0 else deduction
                     vacation_deduction += deduction
                 elif leave_type == "UNPAID":
                     vacation_deduction += deduction

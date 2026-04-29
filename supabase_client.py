@@ -52,9 +52,12 @@ class SupabaseClient:
             or []
         )
 
-    def get_approved_leave(self, period_id: str, employee_ids: list) -> list:
+    def get_approved_leave(
+        self, period_start: str, period_end: str, employee_ids: list
+    ) -> list:
         if not employee_ids:
             return []
+        # Match any leave that overlaps with the period
         return (
             self.db.table("leave_requests")
             .select(
@@ -62,7 +65,8 @@ class SupabaseClient:
                 "vacation_amount, sick_pay_amount"
             )
             .in_("employee_id", employee_ids)
-            .eq("payroll_period_id", period_id)
+            .lte("start_date", period_end)
+            .gte("end_date", period_start)
             .eq("status", "APPROVED")
             .execute()
             .data
