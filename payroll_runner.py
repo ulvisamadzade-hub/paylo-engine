@@ -85,6 +85,7 @@ def run_payroll(period_id: str, company_id: str, employee_ids: list = None) -> d
 
             total_row = {
                 "payroll_snapshot_id": snapshot_id,
+                "company_id": company_id,
                 "employee_id": emp_id,
                 "base_salary_snapshot": base_salary,
                 "gross_salary": payslip["gross_salary"],
@@ -108,25 +109,12 @@ def run_payroll(period_id: str, company_id: str, employee_ids: list = None) -> d
 
             db.upsert_payslip({
                 "payroll_snapshot_id": snapshot_id,
+                "company_id": company_id,
                 "employee_id": emp_id,
+                "payroll_period_id": period_id,
                 "version": 1,
-                "snapshot_employee_total_id": total["id"],
-                "base_salary_snapshot": base_salary,
-                "gross_salary": payslip["gross_salary"],
-                "vacation_pay": payslip["vacation_pay"],
-                "ot_earnings": payslip["ot_earnings"],
-                "hr_adjustment": payslip["hr_adjustment"],
-                "vacation_deduction": payslip["vacation_deduction"],
-                "total_gross": payslip["total_gross"],
-                "income_tax": payslip["income_tax"],
-                "dsmf_employee": payslip["dsmf_employee"],
-                "dsmf_employer": payslip["dsmf_employer"],
-                "med_ins_employee": payslip["med_ins_employee"],
-                "med_ins_employer": payslip["med_ins_employer"],
-                "unemployment_employee": payslip["unemployment_employee"],
-                "unemployment_employer": payslip["unemployment_employer"],
-                "total_deductions": payslip["total_deductions"],
-                "net_salary": payslip["net_salary"],
+                "snapshot_employee_totals_id": total.get("id"),
+                "status": "DRAFT",
             })
 
             calculated += 1
