@@ -26,7 +26,7 @@ class RunPayrollRequest(BaseModel):
     employee_ids: Optional[List[str]] = None
 
 
-@app.get("/health")
+@app.api_route("/health", methods=["GET", "HEAD"])
 def health():
     return {"status": "ok"}
 
