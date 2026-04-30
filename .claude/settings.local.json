@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(gh auth *)",
+      "Bash(gh repo *)",
+      "Bash(curl *)",
+      "Bash(python3 -m json.tool)",
+      "Bash(python3 -c \"import sys,json; data=json.load\\(sys.stdin\\); [print\\(r.get\\('status'\\)\\) for r in data['response']['results']]\")",
+      "Bash(python3 -c ' *)",
+      "Bash(npx create-next-app@14 paylo --typescript --tailwind --app --no-src-dir --import-alias \"@/*\" --use-npm)",
+      "Bash(npx create-next-app@14 paylo --typescript --tailwind --app --no-src-dir --import-alias \"@/*\" --use-npm --eslint --no-experimental-app)",
+      "Bash(npm install *)",
+      "Bash(npx shadcn@latest init --defaults)",
+      "Bash(mkdir -p app/auth app/'\\(dashboard\\)'/hr app/'\\(dashboard\\)'/manager app/'\\(dashboard\\)'/employee components/shared components/payslip lib/supabase lib/utils types)",
+      "Bash(touch app/auth/.gitkeep app/'\\(dashboard\\)'/hr/.gitkeep app/'\\(dashboard\\)'/manager/.gitkeep app/'\\(dashboard\\)'/employee/.gitkeep components/shared/.gitkeep components/payslip/.gitkeep lib/supabase/.gitkeep types/.gitkeep)",
+      "Bash(npm run *)",
+      "Bash(npx tsc *)",
+      "Bash(python3 *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git push *)",
+      "Bash(git commit -m 'Fix: public_holidays column is holiday_date not date *)",
+      "Bash(git commit -m 'Fix: normalize holiday_date to ISO string, compare as strings *)",
+      "Bash(git commit *)"
+    ]
+  }
+}

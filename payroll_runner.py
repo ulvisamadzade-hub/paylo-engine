@@ -1,6 +1,10 @@
+import logging
 from datetime import datetime, date as date_type
 from supabase_client import SupabaseClient
 from calculator import calculate_payslip
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger(__name__)
 
 
 def _is_weekend(date_str: str) -> bool:
@@ -27,11 +31,14 @@ def _leave_working_days(start_str: str, end_str: str, holidays: set) -> int:
 
 
 def run_payroll(period_id: str, company_id: str, employee_ids: list = None) -> dict:
+    log.info("run_payroll start period=%s company=%s", period_id, company_id)
     db = SupabaseClient()
+    log.info("supabase client created")
 
     period = db.get_payroll_period(period_id)
     if not period:
         raise ValueError(f"Period {period_id} not found")
+    log.info("period fetched: %s → %s", period.get("period_start"), period.get("period_end"))
 
     period_start = period["period_start"]
     period_end = period["period_end"]
@@ -39,15 +46,25 @@ def run_payroll(period_id: str, company_id: str, employee_ids: list = None) -> d
     working_days_in_period = _working_days_in_range(period_start, period_end)
 
     employees = db.get_active_employees(company_id, employee_ids)
+    log.info("employees fetched: %d", len(employees))
     if not employees:
         return {"calculated": 0, "errors": []}
 
     emp_ids = [e["id"] for e in employees]
     snapshot_id = db.get_or_create_snapshot(period_id, company_id)
+    log.info("snapshot_id=%s", snapshot_id)
 
+    log.info("fetching OT...")
     ot_entries = db.get_approved_ot(period_start, period_end, emp_ids)
+    log.info("OT entries: %d", len(ot_entries))
+
+    log.info("fetching leave...")
     leave_entries = db.get_approved_leave(period_start, period_end, emp_ids)
+    log.info("leave entries: %d", len(leave_entries))
+
+    log.info("fetching holidays...")
     holidays = db.get_public_holidays(period_start, period_end)
+    log.info("holidays: %d", len(holidays))
 
     # Index by employee
     ot_by_emp: dict[str, list] = {}
