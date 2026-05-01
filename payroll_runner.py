@@ -92,9 +92,8 @@ def run_payroll(period_id: str, company_id: str, employee_ids: list = None) -> d
                 rate = 2.0 if _is_weekend(ot["date"]) else 1.5
                 ot_earnings += hours * hourly_rate * rate
 
-            # Leave
+            # Leave (ANNUAL/SICK = full salary preserved; UNPAID = deduct working days)
             vacation_pay = 0.0
-            sick_pay = 0.0
             vacation_deduction = 0.0
 
             for lr in leave_by_emp.get(emp_id, []):
@@ -118,20 +117,18 @@ def run_payroll(period_id: str, company_id: str, employee_ids: list = None) -> d
                 deduction = round(leave_working_days * daily_rate, 2)
 
                 if leave_type == "ANNUAL":
-                    stored = float(lr.get("vacation_amount") or 0)
-                    vacation_pay += stored if stored > 0 else round(vacation_days * daily_rate, 2)
-                    vacation_deduction += deduction
+                    # Full salary preserved — no pay addition, no deduction
+                    pass
                 elif leave_type == "SICK":
-                    stored = float(lr.get("sick_pay_amount") or 0)
-                    sick_pay += stored if stored > 0 else round(vacation_days * daily_rate, 2)
-                    vacation_deduction += deduction
+                    # Full salary preserved — no pay addition, no deduction
+                    pass
                 elif leave_type == "UNPAID":
                     vacation_deduction += deduction
 
             payslip = calculate_payslip({
                 "employee_id": emp_id,
                 "base_salary": base_salary,
-                "vacation_pay": round(vacation_pay + sick_pay, 2),
+                "vacation_pay": round(vacation_pay, 2),
                 "ot_earnings": round(ot_earnings, 2),
                 "hr_adjustment": 0,
                 "vacation_deduction": round(vacation_deduction, 2),
