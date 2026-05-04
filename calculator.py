@@ -20,7 +20,7 @@ def calculate_dsmf_employer(gross):
     elif gross <= 8000:
         return round(44 + (gross - 200) * 0.15, 2)
     else:
-        return round(gross * 0.11, 2)
+        return round(1214 + (gross - 8000) * 0.11, 2)
 
 def calculate_medical_employee(gross):
     if gross <= 2500:
