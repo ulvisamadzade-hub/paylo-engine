@@ -84,6 +84,19 @@ class SupabaseClient:
         )
         return {str(row["holiday_date"])[:10] for row in (res.data or [])}
 
+    def get_hr_adjustments(self, period_id: str, employee_ids: list) -> list:
+        if not employee_ids:
+            return []
+        return (
+            self.db.table("payroll_adjustments")
+            .select("employee_id, amount")
+            .eq("period_id", period_id)
+            .in_("employee_id", employee_ids)
+            .execute()
+            .data
+            or []
+        )
+
     # ── Snapshot management ────────────────────────────────────
 
     def get_or_create_snapshot(self, period_id: str, company_id: str) -> str:

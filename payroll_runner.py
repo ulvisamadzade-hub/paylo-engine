@@ -66,6 +66,11 @@ def run_payroll(period_id: str, company_id: str, employee_ids: list = None) -> d
     holidays = db.get_public_holidays(period_start, period_end)
     log.info("holidays: %d", len(holidays))
 
+    log.info("fetching hr adjustments...")
+    adj_entries = db.get_hr_adjustments(period_id, emp_ids)
+    adj_by_emp = {a["employee_id"]: float(a["amount"]) for a in adj_entries}
+    log.info("hr adjustments: %d", len(adj_by_emp))
+
     # Index by employee
     ot_by_emp: dict[str, list] = {}
     for ot in ot_entries:
@@ -130,7 +135,7 @@ def run_payroll(period_id: str, company_id: str, employee_ids: list = None) -> d
                 "base_salary": base_salary,
                 "vacation_pay": round(vacation_pay, 2),
                 "ot_earnings": round(ot_earnings, 2),
-                "hr_adjustment": 0,
+                "hr_adjustment": round(adj_by_emp.get(emp_id, 0.0), 2),
                 "vacation_deduction": round(vacation_deduction, 2),
             })
 
