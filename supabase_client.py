@@ -1,11 +1,18 @@
 import os
 from supabase import create_client, Client
 
+CHUNK = 100  # max IDs per .in_() call to stay under PostgREST URL limit
+
 
 def _get_client() -> Client:
     url = os.environ["SUPABASE_URL"]
     key = os.environ["SUPABASE_SERVICE_ROLE_KEY"]
     return create_client(url, key)
+
+
+def _chunked(lst: list, size: int):
+    for i in range(0, len(lst), size):
+        yield lst[i : i + size]
 
 
 class SupabaseClient:
@@ -25,53 +32,75 @@ class SupabaseClient:
         return res.data
 
     def get_active_employees(self, company_id: str, employee_ids: list = None) -> list:
-        q = (
+        if employee_ids:
+            results = []
+            for chunk in _chunked(employee_ids, CHUNK):
+                rows = (
+                    self.db.table("employees")
+                    .select("id, full_name, base_salary_amount, department_id")
+                    .eq("company_id", company_id)
+                    .eq("is_active", True)
+                    .in_("id", chunk)
+                    .execute()
+                    .data
+                    or []
+                )
+                results.extend(rows)
+            return results
+        return (
             self.db.table("employees")
             .select("id, full_name, base_salary_amount, department_id")
             .eq("company_id", company_id)
             .eq("is_active", True)
+            .execute()
+            .data
+            or []
         )
-        if employee_ids:
-            q = q.in_("id", employee_ids)
-        return q.execute().data or []
 
     def get_approved_ot(
         self, period_start: str, period_end: str, employee_ids: list
     ) -> list:
         if not employee_ids:
             return []
-        return (
-            self.db.table("overtime_requests")
-            .select("employee_id, hours, date")
-            .in_("employee_id", employee_ids)
-            .eq("status", "approved")
-            .gte("date", period_start)
-            .lte("date", period_end)
-            .execute()
-            .data
-            or []
-        )
+        results = []
+        for chunk in _chunked(employee_ids, CHUNK):
+            rows = (
+                self.db.table("overtime_requests")
+                .select("employee_id, hours, date")
+                .in_("employee_id", chunk)
+                .eq("status", "approved")
+                .gte("date", period_start)
+                .lte("date", period_end)
+                .execute()
+                .data
+                or []
+            )
+            results.extend(rows)
+        return results
 
     def get_approved_leave(
         self, period_start: str, period_end: str, employee_ids: list
     ) -> list:
         if not employee_ids:
             return []
-        # Match any leave that overlaps with the period
-        return (
-            self.db.table("leave_requests")
-            .select(
-                "employee_id, leave_type, start_date, end_date, "
-                "working_days_on_leave, vacation_amount, sick_pay_amount"
+        results = []
+        for chunk in _chunked(employee_ids, CHUNK):
+            rows = (
+                self.db.table("leave_requests")
+                .select(
+                    "employee_id, leave_type, start_date, end_date, "
+                    "working_days_on_leave, vacation_amount, sick_pay_amount"
+                )
+                .in_("employee_id", chunk)
+                .lte("start_date", period_end)
+                .gte("end_date", period_start)
+                .eq("status", "APPROVED")
+                .execute()
+                .data
+                or []
             )
-            .in_("employee_id", employee_ids)
-            .lte("start_date", period_end)
-            .gte("end_date", period_start)
-            .eq("status", "APPROVED")
-            .execute()
-            .data
-            or []
-        )
+            results.extend(rows)
+        return results
 
     def get_public_holidays(self, period_start: str, period_end: str) -> set:
         """Return a set of ISO date strings that are public holidays in the range."""
@@ -87,15 +116,19 @@ class SupabaseClient:
     def get_hr_adjustments(self, period_id: str, employee_ids: list) -> list:
         if not employee_ids:
             return []
-        return (
-            self.db.table("payroll_adjustments")
-            .select("employee_id, amount")
-            .eq("period_id", period_id)
-            .in_("employee_id", employee_ids)
-            .execute()
-            .data
-            or []
-        )
+        results = []
+        for chunk in _chunked(employee_ids, CHUNK):
+            rows = (
+                self.db.table("payroll_adjustments")
+                .select("employee_id, amount")
+                .eq("period_id", period_id)
+                .in_("employee_id", chunk)
+                .execute()
+                .data
+                or []
+            )
+            results.extend(rows)
+        return results
 
     # ── Snapshot management ────────────────────────────────────
 
