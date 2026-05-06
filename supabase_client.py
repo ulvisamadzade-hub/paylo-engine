@@ -176,3 +176,26 @@ class SupabaseClient:
             .upsert(data, on_conflict="payroll_snapshot_id,employee_id,version")
             .execute()
         )
+
+    def bulk_upsert_snapshot_totals(self, rows: list) -> list:
+        if not rows:
+            return []
+        result = []
+        for chunk in _chunked(rows, CHUNK):
+            res = (
+                self.db.table("snapshot_employee_totals")
+                .upsert(chunk, on_conflict="payroll_snapshot_id,employee_id")
+                .execute()
+            )
+            result.extend(res.data or [])
+        return result
+
+    def bulk_upsert_payslips(self, rows: list) -> None:
+        if not rows:
+            return
+        for chunk in _chunked(rows, CHUNK):
+            (
+                self.db.table("payslips")
+                .upsert(chunk, on_conflict="payroll_snapshot_id,employee_id,version")
+                .execute()
+            )

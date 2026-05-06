@@ -82,6 +82,7 @@ def run_payroll(period_id: str, company_id: str, employee_ids: list = None) -> d
 
     calculated = 0
     errors = []
+    total_rows = []
 
     for emp in employees:
         emp_id = emp["id"]
@@ -90,14 +91,12 @@ def run_payroll(period_id: str, company_id: str, employee_ids: list = None) -> d
         daily_rate = base_salary / working_days_in_period
 
         try:
-            # OT: 1.5x weekday, 2x weekend
             ot_earnings = 0.0
             for ot in ot_by_emp.get(emp_id, []):
                 hours = float(ot.get("hours") or 0)
                 rate = 2.0 if _is_weekend(ot["date"]) else 1.5
                 ot_earnings += hours * hourly_rate * rate
 
-            # Leave (ANNUAL/SICK = full salary preserved; UNPAID = deduct working days)
             vacation_pay = 0.0
             vacation_deduction = 0.0
 
@@ -111,23 +110,14 @@ def run_payroll(period_id: str, company_id: str, employee_ids: list = None) -> d
                     e = date_type.fromisoformat(end_str)
                     total_days = (e - s).days + 1
                     holiday_count = sum(1 for h in holidays if start_str <= h <= end_str)
-                    # Pay: all calendar days excluding holidays (incl. weekends)
                     vacation_days = total_days - holiday_count
-                    # Deduction: Mon–Fri days excluding holidays only
                     leave_working_days = _leave_working_days(start_str, end_str, holidays)
                 except Exception:
                     vacation_days = float(lr.get("working_days_on_leave") or 0)
                     leave_working_days = vacation_days
 
                 deduction = round(leave_working_days * daily_rate, 2)
-
-                if leave_type == "ANNUAL":
-                    # Full salary preserved — no pay addition, no deduction
-                    pass
-                elif leave_type == "SICK":
-                    # Full salary preserved — no pay addition, no deduction
-                    pass
-                elif leave_type == "UNPAID":
+                if leave_type == "UNPAID":
                     vacation_deduction += deduction
 
             payslip = calculate_payslip({
@@ -139,7 +129,7 @@ def run_payroll(period_id: str, company_id: str, employee_ids: list = None) -> d
                 "vacation_deduction": round(vacation_deduction, 2),
             })
 
-            total_row = {
+            total_rows.append({
                 "payroll_snapshot_id": snapshot_id,
                 "company_id": company_id,
                 "employee_id": emp_id,
@@ -159,23 +149,28 @@ def run_payroll(period_id: str, company_id: str, employee_ids: list = None) -> d
                 "unemployment_employer": payslip["unemployment_employer"],
                 "total_deductions": payslip["total_deductions"],
                 "net_salary": payslip["net_salary"],
-            }
-
-            total = db.upsert_snapshot_total(total_row)
-
-            db.upsert_payslip({
-                "payroll_snapshot_id": snapshot_id,
-                "company_id": company_id,
-                "employee_id": emp_id,
-                "payroll_period_id": period_id,
-                "version": 1,
-                "snapshot_employee_totals_id": total.get("id"),
-                "status": "DRAFT",
             })
-
             calculated += 1
 
         except Exception as e:
             errors.append({"employee_id": emp_id, "error": str(e)})
+
+    # Bulk upsert totals in chunks, then bulk upsert payslips
+    inserted_totals = db.bulk_upsert_snapshot_totals(total_rows)
+    total_id_map = {r["employee_id"]: r["id"] for r in inserted_totals}
+
+    payslip_rows = [
+        {
+            "payroll_snapshot_id": snapshot_id,
+            "company_id": company_id,
+            "employee_id": r["employee_id"],
+            "payroll_period_id": period_id,
+            "version": 1,
+            "snapshot_employee_totals_id": total_id_map.get(r["employee_id"]),
+            "status": "DRAFT",
+        }
+        for r in total_rows
+    ]
+    db.bulk_upsert_payslips(payslip_rows)
 
     return {"calculated": calculated, "errors": errors}
