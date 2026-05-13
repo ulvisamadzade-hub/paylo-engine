@@ -117,7 +117,11 @@ def run_payroll(period_id: str, company_id: str, employee_ids: list = None) -> d
                     leave_working_days = vacation_days
 
                 deduction = round(leave_working_days * daily_rate, 2)
-                if leave_type == "UNPAID":
+                if leave_type == "ANNUAL":
+                    # Show vacation pay amount; deduction cancels it so total gross unchanged
+                    vacation_pay += deduction
+                    vacation_deduction += deduction
+                elif leave_type == "UNPAID":
                     vacation_deduction += deduction
 
             payslip = calculate_payslip({
